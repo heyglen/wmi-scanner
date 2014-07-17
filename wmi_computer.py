@@ -154,8 +154,8 @@ class wmiComputer(object):
 				try:
 					route = "%s via %s" % (ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask)), route.NextHop)
 				except ValueError:
-					self.logger.error("Hostname: %s" % hostname)
-					raise
+					self.logger.error("\t%sIncorrect Persistent Route: %s %s" % (hostname, route.Destination, route.Mask))
+					route = "%s via %s" % (ipaddress.IPv4Interface("%s/%s" % (route.Destination, route.Mask)).network, route.NextHop)
 				self.persistent_static_routes.append((hostname, route))
 		return self.persistent_static_routes
 
