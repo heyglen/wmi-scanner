@@ -33,7 +33,10 @@ class wmiComputer(object):
 				self.skipped_computers.append((host, error))
 				continue
 			self.hosts.add(host)
-			host = wmi.WMI(computer=host)
+			try:
+				host = wmi.WMI(computer=host)
+			except wmi.x_wmi as error:
+				self.skipped_computers.append((host, error))
 			self.computers.append(host)
 
 	def _logging(self):
