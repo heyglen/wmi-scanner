@@ -151,7 +151,11 @@ class wmiComputer(object):
 		for computer in self.computers:
 			hostname = self.get_hostname(computer)
 			for route in computer.Win32_IP4PersistedRouteTable():
-				route = "%s via %s" % (ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask)), route.NextHop)
+				try:
+					route = "%s via %s" % (ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask)), route.NextHop)
+				except ValueError:
+					self.logger.error("Hostname: %s" % hostname)
+					raise
 				self.persistent_static_routes.append((hostname, route))
 		return self.persistent_static_routes
 
