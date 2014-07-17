@@ -27,14 +27,17 @@ class wmiComputer(object):
 		if self.skipped_computers:
 			for computer, error in config.computers.skipped_computers:
 				logger.error("\tSkipped %s %s" % (computer, error))
-		
+
 	def get_computers(self):
 		self.skipped_computers = set()
 		for host in self.hosts:
 			if self._invalid_host(host):
 				self.skipped_computers.add(host)
 				continue
-			yield wmi.WMI(computer=host)			
+			try:
+				yield wmi.WMI(computer=host)			
+			except wmi.x_wmi as error:
+				logger.error("%s: %s" % (host, error))
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
