@@ -35,9 +35,10 @@ class wmiComputer(object):
 			self.hosts.add(host)
 			try:
 				host = wmi.WMI(computer=host)
+				self.computers.append(host)
 			except wmi.x_wmi as error:
 				self.skipped_computers.append((host, error))
-			self.computers.append(host)
+			
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
