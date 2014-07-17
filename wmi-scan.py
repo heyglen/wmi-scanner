@@ -25,9 +25,6 @@ def print_services(services, filter_fn=None):
 @pass_config
 def cli(config, hostname):
 	config.computers = wmi_computer.wmiComputer(hostname)
-	if config.computers.skipped_computers:
-		for computer, error in config.computers.skipped_computers:
-			click.echo("\tSkipping %s %s" % (computer, error))
 	
 	if not config.computers:
 		click.echo("No hosts to scan. Quitting...")

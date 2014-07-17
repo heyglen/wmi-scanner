@@ -12,33 +12,29 @@ class wmiComputer(object):
 		else:
 			hosts = host.split(",")
 			hosts = [host.strip() for host in hosts]
-		self._connect(hosts)
+		self.hosts = hosts
 		self._logging()
 
 	def _invalid_host(self, host):
 		try:
 			socket.gethostbyname(host)
 		except socket.gaierror:
-			return "DNS: Cannot resolve hostname"
-		return ""
+			logger.error("%s: Cannot resolve hostname" % host)
+			return True
+		return False
 
-	def _connect(self, hosts):
-		filtered_host_list = set()
-		self.computers = list()
-		self.skipped_computers = list()
-		self.hosts = set()
-		for host in hosts:
-			error = self._invalid_host(host)
-			if error:
-				self.skipped_computers.append((host, error))
+	def __del__(self):
+		if self.skipped_computers:
+			for computer, error in config.computers.skipped_computers:
+				logger.error("\tSkipped %s %s" % (computer, error))
+		
+	def get_computers(self):
+		self.skipped_computers = set()
+		for host in self.hosts:
+			if self._invalid_host(host):
+				self.skipped_computers.add(host)
 				continue
-			self.hosts.add(host)
-			try:
-				host = wmi.WMI(computer=host)
-				self.computers.append(host)
-			except wmi.x_wmi as error:
-				self.skipped_computers.append((host, error))
-			
+			yield wmi.WMI(computer=host)			
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
@@ -57,7 +53,7 @@ class wmiComputer(object):
 		self.whitelisted_services = list()
 		self.blacklisted_services = list()
 		services = list()
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for service in computer.Win32_Service():
 				if whitelisted or blacklisted:
@@ -81,7 +77,7 @@ class wmiComputer(object):
 		self.disconnected_nics = list()
 		valid_network_adaptor_types = ["Ethernet 802.3"]
 		status_code = {0: "Disconnected", 1: "Connecting", 2: "Connected", 3: "Disconnecting", 4: "Hardware not present", 5: "Hardware disabled", 6: "Hardware malfunction", 7: "Media disconnected", 8: "Authenticating", 9: "Authentication succeeded", 10: "Authentication failed", 11: "Invalid address", 12: "Credentials required"}
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for nic in computer.Win32_NetworkAdapterSetting():
 				if hasattr(nic, "Element"):
@@ -114,7 +110,7 @@ class wmiComputer(object):
 		except AttributeError:
 			pass
 		self.dns_ips = list()
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for nic in computer.Win32_NetworkAdapterSetting():	
 				if hasattr(nic, "Setting"):
@@ -130,7 +126,7 @@ class wmiComputer(object):
 		except AttributeError:
 			pass
 		self.dns_domain_suffix_search = list()
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			suffixes = set()
 			for nic in computer.Win32_NetworkAdapterSetting():	
@@ -148,7 +144,7 @@ class wmiComputer(object):
 			return self.persistent_static_routes
 		except AttributeError:
 			self.persistent_static_routes = list()
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for route in computer.Win32_IP4PersistedRouteTable():
 				try:
@@ -164,7 +160,7 @@ class wmiComputer(object):
 			return self.route_table
 		except AttributeError:
 			self.route_table = list()
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for route in computer.Win32_IP4RouteTable():
 				route = "%s via %s" % (ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask)), route.NextHop)
@@ -176,7 +172,7 @@ class wmiComputer(object):
 			return self.default_gateway
 		except AttributeError:
 			self.default_gateway = list()
-		for computer in self.computers:
+		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for nic in computer.Win32_NetworkAdapterSetting():
 				if hasattr(nic, "Setting") and nic.Setting.DefaultIPGateway is not None:
