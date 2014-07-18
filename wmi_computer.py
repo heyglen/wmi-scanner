@@ -6,12 +6,8 @@ import wmi
 
 
 class wmiComputer(object):
-	def __init__(self, host=None):
-		if not host:
-			hosts = "localhost"
-		else:
-			hosts = host.split(",")
-			hosts = [host.strip() for host in hosts]
+	def __init__(self, host="localhost"):
+		hosts = [host.strip() for host in host.split(",")]
 		self.hosts = hosts
 		self._logging()
 
@@ -19,25 +15,24 @@ class wmiComputer(object):
 		try:
 			socket.gethostbyname(host)
 		except socket.gaierror:
-			self.logger.error("%s: Cannot resolve hostname" % host)
+			self.logger.error("\t%s: Cannot resolve hostname" % host)
 			return True
 		return False
 
-	def __del__(self):
-		if self.skipped_computers:
-			for computer, error in config.computers.skipped_computers:
-				self.logger.error("\tSkipped %s %s" % (computer, error))
-
 	def get_computers(self):
-		self.skipped_computers = set()
+		try:
+			self.connection_error
+		except AttributeError:
+			self.connection_error = set()
 		for host in self.hosts:
-			if self._invalid_host(host):
-				self.skipped_computers.add(host)
-				continue
-			try:
-				yield wmi.WMI(computer=host)			
-			except wmi.x_wmi as error:
-				self.logger.error("%s: %s" % (host, error))
+			if host not in self.connection_error:
+				if self._invalid_host(host):
+					self.connection_error.add(host)
+				else:
+					try:
+						yield wmi.WMI(computer=host)			
+					except wmi.x_wmi as error:
+						self.logger.error("%s: %s" % (host, error))
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
@@ -146,28 +141,24 @@ class wmiComputer(object):
 		try:
 			return self.persistent_static_routes
 		except AttributeError:
-			self.persistent_static_routes = list()
+			self.persistent_static_routes = set()
 		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for route in computer.Win32_IP4PersistedRouteTable():
-				try:
-					route = "%s via %s" % (ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask)), route.NextHop)
-				except ValueError:
-					self.logger.error("\t%s: Incorrect Persistent Route: %s %s" % (hostname, route.Destination, route.Mask))
-					route = "%s via %s" % (ipaddress.IPv4Interface("%s/%s" % (route.Destination, route.Mask)).network, route.NextHop)
-				self.persistent_static_routes.append((hostname, route))
+				route = (unicode(ipaddress.IPv4Interface("%s/%s" % (route.Destination, route.Mask))), route.NextHop)
+				self.persistent_static_routes.add((hostname, ) + route)
 		return self.persistent_static_routes
 
 	def routing_table(self):
 		try:
 			return self.route_table
 		except AttributeError:
-			self.route_table = list()
+			self.route_table = set()
 		for computer in self.get_computers():
 			hostname = self.get_hostname(computer)
 			for route in computer.Win32_IP4RouteTable():
-				route = "%s via %s" % (ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask)), route.NextHop)
-				self.route_table.append((hostname, route))
+				route = (unicode(ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask))), route.NextHop)
+				self.route_table.add((hostname, ) + route)
 		return self.route_table
 
 	def gateway(self):
