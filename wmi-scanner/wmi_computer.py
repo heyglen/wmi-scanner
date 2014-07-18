@@ -30,9 +30,18 @@ class wmiComputer(object):
 					self.connection_error.add(host)
 				else:
 					try:
-						yield (self.get_hostname(host), wmi.WMI(computer=host))
+                                                wmi_object = wmi.WMI(computer=host)
 					except wmi.x_wmi as error:
+                                                self.connection_error.add(host)
 						self.logger.error("\t%s: %s" % (host, error))
+						continue
+                                        hostname = self.get_hostname(wmi_object)
+                                        if not hostname:
+                                                self.logger.error("\t%s: Could not read DNS hostname" % (host))
+                                                self.connection_error.add(host)
+                                                continue
+					yield (hostname, wmi_object)
+
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
@@ -43,7 +52,9 @@ class wmiComputer(object):
 
 	def get_hostname(self, computer_obj):
 		for host in computer_obj.Win32_ComputerSystem():
-			return host.DNSHostName.lower()
+                        if hasattr(host, "DNSHostName"):
+                                return host.DNSHostName.lower()
+                return False
 
 	def services(self, whitelisted=False, blacklisted=False):
 		service_whitelist = []
