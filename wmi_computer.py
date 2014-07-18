@@ -183,45 +183,5 @@ class wmiComputer(object):
 						self.default_gateway.append((hostname, ip))
 		return self.default_gateway
 
-
-	def print_all(self):
-		if self.connected_nics:
-			self.logger.info("\nConnected NICs")
-			for interface in self.connected_nics:
-				(status, name, speed, ips, mac, last_error) = interface
-				self.logger.info("\t[%s] %s %s '%s' %s" % (status, name, speed, ips, mac))
-				if last_error:
-					self.logger.error("\t\tLast Error: %s" % last_error)
-		
-		if self.disconnected_nics:
-			self.logger.info("\nDisconnected NICs")
-			for interface in self.disconnected_nics:
-				(status, name, last_error) = interface
-				self.logger.info("\t[%s] %s" % (status, name))
-				if last_error:
-					self.logger.error("\t\tLast Error: %s" % last_error)
-		
-		if self.dns:
-			self.logger.info("\nDNS Servers")
-			for ip in self.dns:
-				self.logger.info("\t%s" % ip)
-		
-		if self.dns_domain_suffix_search:
-			self.logger.info("\nDNS Suffix List")
-			for suffix in self.dns_domain_suffix_search:
-				self.logger.info("\t%s" % suffix)
-		
-		if self.whitelisted_services or self.blacklisted_services:
-			self.logger.info("\nInteresting Services")
-			for service in self.whitelisted_services:
-				self.logger.info("\t[%s] %s" % service)
-			for service in self.blacklisted_services:
-				self.logger.error("\t[%s] %s" % service)
-		
-		if self.persistent_routes:
-			self.logger.info("\nPersistent Routes")
-			for route in self.persistent_routes:
-				self.logger.error("\t%s" % route)
-
 if __name__ == "__main__":
 	pass
