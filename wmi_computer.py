@@ -19,14 +19,14 @@ class wmiComputer(object):
 		try:
 			socket.gethostbyname(host)
 		except socket.gaierror:
-			logger.error("%s: Cannot resolve hostname" % host)
+			self.logger.error("%s: Cannot resolve hostname" % host)
 			return True
 		return False
 
 	def __del__(self):
 		if self.skipped_computers:
 			for computer, error in config.computers.skipped_computers:
-				logger.error("\tSkipped %s %s" % (computer, error))
+				self.logger.error("\tSkipped %s %s" % (computer, error))
 
 	def get_computers(self):
 		self.skipped_computers = set()
@@ -37,7 +37,7 @@ class wmiComputer(object):
 			try:
 				yield wmi.WMI(computer=host)			
 			except wmi.x_wmi as error:
-				logger.error("%s: %s" % (host, error))
+				self.logger.error("%s: %s" % (host, error))
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
