@@ -30,9 +30,9 @@ class wmiComputer(object):
 					self.connection_error.add(host)
 				else:
 					try:
-						yield wmi.WMI(computer=host)			
+						yield (self.get_hostname(host), wmi.WMI(computer=host))
 					except wmi.x_wmi as error:
-						self.logger.error("%s: %s" % (host, error))
+						self.logger.error("\t%s: %s" % (host, error))
 
 	def _logging(self):
 		self.logger = logging.getLogger("windows-diagnositc")
@@ -51,8 +51,7 @@ class wmiComputer(object):
 		self.whitelisted_services = list()
 		self.blacklisted_services = list()
 		services = list()
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			for service in computer.Win32_Service():
 				if whitelisted or blacklisted:
 					if whitelisted and service.Caption in service_whitelist and service.State != "Running":
@@ -75,8 +74,7 @@ class wmiComputer(object):
 		self.disconnected_nics = list()
 		valid_network_adaptor_types = ["Ethernet 802.3"]
 		status_code = {0: "Disconnected", 1: "Connecting", 2: "Connected", 3: "Disconnecting", 4: "Hardware not present", 5: "Hardware disabled", 6: "Hardware malfunction", 7: "Media disconnected", 8: "Authenticating", 9: "Authentication succeeded", 10: "Authentication failed", 11: "Invalid address", 12: "Credentials required"}
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			for nic in computer.Win32_NetworkAdapterSetting():
 				if hasattr(nic, "Element"):
 					nic_element = nic.Element
@@ -108,8 +106,7 @@ class wmiComputer(object):
 		except AttributeError:
 			pass
 		self.dns_ips = list()
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			for nic in computer.Win32_NetworkAdapterSetting():	
 				if hasattr(nic, "Setting"):
 					nic_setting = nic.Setting
@@ -124,8 +121,7 @@ class wmiComputer(object):
 		except AttributeError:
 			pass
 		self.dns_domain_suffix_search = list()
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			suffixes = set()
 			for nic in computer.Win32_NetworkAdapterSetting():	
 				if hasattr(nic, "Setting"):
@@ -142,8 +138,7 @@ class wmiComputer(object):
 			return self.persistent_static_routes
 		except AttributeError:
 			self.persistent_static_routes = set()
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			for route in computer.Win32_IP4PersistedRouteTable():
 				route = (unicode(ipaddress.IPv4Interface("%s/%s" % (route.Destination, route.Mask))), route.NextHop)
 				self.persistent_static_routes.add((hostname, ) + route)
@@ -154,8 +149,7 @@ class wmiComputer(object):
 			return self.route_table
 		except AttributeError:
 			self.route_table = set()
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			for route in computer.Win32_IP4RouteTable():
 				route = (unicode(ipaddress.IPv4Network("%s/%s" % (route.Destination, route.Mask))), route.NextHop)
 				self.route_table.add((hostname, ) + route)
@@ -166,8 +160,7 @@ class wmiComputer(object):
 			return self.default_gateway
 		except AttributeError:
 			self.default_gateway = list()
-		for computer in self.get_computers():
-			hostname = self.get_hostname(computer)
+		for hostname, computer in self.get_computers():
 			for nic in computer.Win32_NetworkAdapterSetting():
 				if hasattr(nic, "Setting") and nic.Setting.DefaultIPGateway is not None:
 					for ip in nic.Setting.DefaultIPGateway:
