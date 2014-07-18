@@ -1,6 +1,7 @@
 import sys
 
 import click
+import ipaddress
 
 import wmi_computer
 
@@ -24,14 +25,16 @@ def print_services(services, filter_fn=None):
 @click.option("--hostname", "-h", default="localhost", help="Hostname to scan")
 @pass_config
 def cli(config, hostname):
-	config.computers = wmi_computer.wmiComputer(hostname)
-	
+	config.computers = wmi_computer.wmiComputer(hostname)	
 	if not config.computers:
 		click.echo("No hosts to scan. Quitting...")
 		sys.exit()
 	else:
 		click.echo()
-		click.echo("Scanning %s..." % ", ".join(config.computers.hosts))
+		if len(config.computers.hosts) > 3:
+			click.echo("Scanning %s hosts..." % len(config.computers.hosts))
+		else:
+			click.echo("Scanning %s..." % ", ".join(config.computers.hosts))
 
 
 @cli.group()
@@ -135,30 +138,20 @@ def persistent(config):
 
 @route.command()
 @pass_config
-def verify_persistent(config):
-	""" Active Persistent IP Routes Check """
+def verify(config):
+	""" IP Routes Verification """
 	persistent_routes = config.computers.persistent_routes()
 	routes = config.computers.routing_table()
-	missing_routes = list()
+	missing_routes = set()
 	if persistent_routes:
-		host_routes = dict()
-		for hostname, route in routes:
-			if hostname not in host_routes.keys():
-				host_routes[hostname] = list()
-			host_routes[hostname].append(route)
-
-		for hostname, route in persistent_routes:
-			if route not in host_routes[hostname]:
-				missing_routes.append((hostname, route))
-
-		if missing_routes:
-			click.echo("\tInactive Persistent Routes:")
-			for hostname, route in missing_routes:
-				click.echo("\t\t%s: %s" % (hostname, route))
-		else:
-			click.echo("\tOK - Persistent Routes Match")
-	else:
-		click.echo("\tOK - No Persistent Routes")
+		for hostname, destination, gateway in persistent_routes:
+			try:
+				ipaddress.IPv4Network(unicode(destination))
+			except ValueError:
+				click.echo("%s: Invalid network %s" %(hostname, destination))
+				continue
+			if (hostname, destination, gateway) not in routes:
+				click.echo("\t\t%s: inactive persistent route %s" % (hostname, destination))
 
 @route.command()
 @pass_config
