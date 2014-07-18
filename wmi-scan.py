@@ -148,10 +148,10 @@ def verify(config):
 			try:
 				ipaddress.IPv4Network(unicode(destination))
 			except ValueError:
-				click.echo("%s: Invalid network %s" %(hostname, destination))
+				click.echo("\t%s: Invalid network %s" %(hostname, destination))
 				continue
 			if (hostname, destination, gateway) not in routes:
-				click.echo("\t\t%s: inactive persistent route %s" % (hostname, destination))
+				click.echo("\t%s: inactive persistent route %s" % (hostname, destination))
 
 @route.command()
 @pass_config
